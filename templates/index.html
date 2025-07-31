@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Password Complexity Checker</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      padding: 2rem;
+      max-width: 700px;
+      margin: auto;
+      background: #ffffff;
+      min-height: 100vh;
+    }
+    h1 {
+      color: #235390;
+      text-align: center;
+      margin-bottom: 2rem;
+      letter-spacing: 0.5px;
+      text-shadow: 0 2px 8px #0001;
+    }
+    .input-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .input-group input[type="password"],
+    .input-group input[type="text"] {
+      padding: 0.7rem;
+      font-size: 1.1rem;
+      flex: 1;
+      border: 1.5px solid #000000;
+      border-radius: 6px;
+      background: #fafdff;
+      color: #1a2330;
+      transition: background 0.3s, border 0.2s, box-shadow 0.2s;
+      box-shadow: 0 1px 4px #0001;
+    }
+    .input-group input.weak {
+      background: #fff4f4;
+      border-color: #e74c3c;
+    }
+    .input-group input.medium {
+      background: #fffbe6;
+      border-color: #f39c12;
+    }
+    .input-group input.strong {
+      background: #e9f8f0;
+      border-color: #28a745;
+    }
+    #showHideBtn {
+      background: #f1f4fa;
+      color: #1a2330;
+      border: 1.5px solid #000000;
+      padding: 0.7rem 1rem;
+      border-radius: 6px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: background 0.3s, color 0.3s, border 0.3s;
+    }
+    #showHideBtn.weak {
+      background: #fff4f4;
+      color: #e74c3c;
+      border-color: #000000;
+    }
+    #showHideBtn.medium {
+      background: #fffbe6;
+      color: #f39c12;
+      border-color: #000000;
+    }
+    #showHideBtn.strong {
+      background: #e9f8f0;
+      color: #28a745;
+      border-color: #000000;
+    }
+    button {
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    button:hover {
+      background: #4f8cff;
+      color: #fff;
+    }
+    .result {
+      margin-top: 2rem;
+      padding: 1.5rem;
+      border-radius: 10px;
+      box-shadow: 0 4px 24px #00000010;
+      border-left: 6px solid;
+      max-width: 420px;
+      margin-left: auto;
+      margin-right: auto;
+      transition: background 0.3s, border-color 0.3s;
+    }
+    .score {
+      font-size: 1.4rem;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+    .result.weak {
+      background: #fff4f4;
+      border-color: #e74c3c;
+    }
+    .result.medium {
+      background: #fffbe6;
+      border-color: #f39c12;
+    }
+    .result.strong {
+      background: #e9f8f0;
+      border-color: #28a745;
+    }
+    #ppc_score {
+      color: #235390;
+    }
+    #status {
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+    #loading {
+      color: #235390;
+      font-weight: bold;
+      text-align: center;
+      margin-top: 1rem;
+    }
+    @media (max-width: 600px) {
+      body { padding: 1rem; }
+      .result { font-size: 0.95rem; }
+      .score { font-size: 1.1rem; }
+    }
+  </style>
+</head>
+<body>
+
+    <header style="text-align: center; padding-bottom: 1rem; border-bottom: 2px solid #eaeaea; margin-bottom: 2rem;">
+      <img src="{{ url_for('static', filename='Logo-removebg.png') }}" alt="PCC Logo" style="height:48px; margin-bottom: 0.5rem;">
+      <h1 style="margin: 0; color: #0e4995; font-size: 2rem;">PCC Score</h1>
+      <p style="color: #000000; margin-top: 0.4rem; font-size: 1rem;">Password Complexity Checker</p>
+    </header>
+
+  <div class="input-group">
+    <input type="password" id="passwordInput" placeholder="Enter your password" aria-label="Password" autocomplete="off" />
+    <button id="showHideBtn" type="button" aria-label="Show or hide password">Show</button>
+  </div>
+
+  <div id="loading" style="display:none;">Checking...</div>
+
+  <div class="result" id="resultBox" style="display:none;">
+    <p class="score">PPC Score: <span id="ppc_score"></span> / 100</p>
+    <p><strong>Status:</strong> <span id="status"></span></p>
+  </div>
+
+  <footer style="margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid #eaeaea; text-align: center; font-size: 0.9rem; color: #888;">
+    © 2025 PCC Score. All rights reserved.
+  </footer>
+
+  <script>
+    const passwordInput = document.getElementById("passwordInput");
+    const resultBox = document.getElementById("resultBox");
+    const loading = document.getElementById("loading");
+    const showHideBtn = document.getElementById("showHideBtn");
+
+    showHideBtn.onclick = function() {
+      passwordInput.type = passwordInput.type === "password" ? "text" : "password";
+      showHideBtn.textContent = passwordInput.type === "password" ? "Show" : "Hide";
+      passwordInput.focus();
+    };
+
+    let debounceTimer;
+    passwordInput.addEventListener("input", function () {
+      clearTimeout(debounceTimer);
+      if (!passwordInput.value) {
+        resultBox.style.display = "none";
+        loading.style.display = "none";
+        passwordInput.classList.remove("weak", "medium", "strong");
+        showHideBtn.classList.remove("weak", "medium", "strong");
+        return;
+      }
+      loading.style.display = "block";
+      debounceTimer = setTimeout(checkPassword, 400);
+    });
+
+    async function checkPassword() {
+      const password = passwordInput.value;
+      if (!password) return;
+      loading.style.display = "block";
+      resultBox.style.display = "none";
+      try {
+        const res = await fetch("/check-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password }),
+        });
+        const data = await res.json();
+
+        const score = parseFloat(data.ppc_score);
+        document.getElementById("ppc_score").textContent = score;
+        document.getElementById("status").textContent = data.status;
+
+        // Clean classes
+        resultBox.classList.remove("weak", "medium", "strong");
+        passwordInput.classList.remove("weak", "medium", "strong");
+        showHideBtn.classList.remove("weak", "medium", "strong");
+
+        // Add class based on score
+        if (score < 50) {
+          resultBox.classList.add("weak");
+          passwordInput.classList.add("weak");
+          showHideBtn.classList.add("weak");
+        } else if (score < 70) {
+          resultBox.classList.add("medium");
+          passwordInput.classList.add("medium");
+          showHideBtn.classList.add("medium");
+        } else {
+          resultBox.classList.add("strong");
+          passwordInput.classList.add("strong");
+          showHideBtn.classList.add("strong");
+        }
+
+        loading.style.display = "none";
+        resultBox.style.display = "block";
+      } catch (e) {
+        loading.style.display = "none";
+        alert("Error checking password. Please try again.");
+      }
+    }
+  </script>
+</body>
+</html>
